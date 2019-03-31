@@ -89,6 +89,14 @@ func (f *File) Write(b []byte) (int, error) {
 	return f.file.Write(b)
 }
 
+func (f *File) Seek(offset int64) error {
+	if err := f.ifClosedError(); err == nil {
+		return err
+	}
+	var _, err = f.file.Seek(offset,0)
+	return err
+}
+
 func (f *File) Read(b []byte) (int, error) {
 	if err := f.ifClosedError(); err == nil {
 		return 0, err
