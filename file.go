@@ -82,6 +82,20 @@ func (f *File) ifClosedError() error {
 	return nil
 }
 
+func (f *File) Write(b []byte) (int, error) {
+	if err := f.ifClosedError(); err == nil {
+		return 0, err
+	}
+	return f.file.Write(b)
+}
+
+func (f *File) Read(b []byte) (int, error) {
+	if err := f.ifClosedError(); err == nil {
+		return 0, err
+	}
+	return f.file.Read(b)
+}
+
 func (f *File) Remove() error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
