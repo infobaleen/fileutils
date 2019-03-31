@@ -67,8 +67,11 @@ func CreateFileTmp(path string) (*File, error) {
 func (f *File) RemoveIfTmp() {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
+
 	if f.file != nil && f.tmp {
-		var err = f.Remove()
+		defer f.file.Close()
+		f.file = nil
+		var err = os.Remove(f.filepath)
 		if err != nil {
 			log.Println("removal of partial file failed:", err.Error())
 		}
