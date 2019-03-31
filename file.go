@@ -172,6 +172,7 @@ func (f *File) finalize() error {
 		if err != nil {
 			return err
 		}
+		f.tmp = false
 	}
 	return nil
 }
