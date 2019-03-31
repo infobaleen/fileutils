@@ -86,14 +86,14 @@ func (f *File) ifClosedError() error {
 }
 
 func (f *File) Write(b []byte) (int, error) {
-	if err := f.ifClosedError(); err == nil {
+	if err := f.ifClosedError(); err != nil {
 		return 0, err
 	}
 	return f.file.Write(b)
 }
 
 func (f *File) Seek(offset int64) error {
-	if err := f.ifClosedError(); err == nil {
+	if err := f.ifClosedError(); err != nil {
 		return err
 	}
 	var _, err = f.file.Seek(offset,0)
@@ -101,7 +101,7 @@ func (f *File) Seek(offset int64) error {
 }
 
 func (f *File) Read(b []byte) (int, error) {
-	if err := f.ifClosedError(); err == nil {
+	if err := f.ifClosedError(); err != nil {
 		return 0, err
 	}
 	return f.file.Read(b)
@@ -110,7 +110,7 @@ func (f *File) Read(b []byte) (int, error) {
 func (f *File) Remove() error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-	if err := f.ifClosedError(); err == nil {
+	if err := f.ifClosedError(); err != nil {
 		return err
 	}
 
@@ -128,7 +128,7 @@ func (f *File) Path() string {
 func (f *File) ChangeName(newName string) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-	if err := f.ifClosedError(); err == nil {
+	if err := f.ifClosedError(); err != nil {
 		return err
 	}
 
@@ -140,7 +140,7 @@ func (f *File) ChangeName(newName string) error {
 func (f *File) Move(newPath string) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-	if err := f.ifClosedError(); err == nil {
+	if err := f.ifClosedError(); err != nil {
 		return err
 	}
 
@@ -153,7 +153,7 @@ func (f *File) Move(newPath string) error {
 func (f *File) Finalize() error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-	if err := f.ifClosedError(); err == nil {
+	if err := f.ifClosedError(); err != nil {
 		return err
 	}
 	if f.tmp {
@@ -181,7 +181,7 @@ func (f *File) finalize() error {
 func (f *File) Close() error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-	if err := f.ifClosedError(); err == nil {
+	if err := f.ifClosedError(); err != nil {
 		return err
 	}
 	var err = f.finalize()
