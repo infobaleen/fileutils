@@ -23,11 +23,11 @@ var rnd = func() func() uint16 {
 	}
 }()
 
-type File struct{
-	mutex sync.Mutex
+type File struct {
+	mutex    sync.Mutex
 	filepath string
-	file *os.File
-	tmp bool
+	file     *os.File
+	tmp      bool
 }
 
 func CreateFile(path string) (*File, error) {
@@ -80,7 +80,7 @@ func (f *File) RemoveIfTmp() {
 
 func (f *File) ifClosedError() error {
 	if f.file == nil {
-		return errors.Fmt("file %q is closed")
+		return errors.Fmt("file %q is closed", f.filepath)
 	}
 	return nil
 }
@@ -96,7 +96,7 @@ func (f *File) Seek(offset int64) error {
 	if err := f.ifClosedError(); err != nil {
 		return err
 	}
-	var _, err = f.file.Seek(offset,0)
+	var _, err = f.file.Seek(offset, 0)
 	return err
 }
 
