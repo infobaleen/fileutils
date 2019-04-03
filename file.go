@@ -92,7 +92,18 @@ func (f *File) Write(b []byte) (int, error) {
 	return f.file.Write(b)
 }
 
+func (f *File) Size() (int64, error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	var info, err = f.file.Stat()
+	return info.Size(), err
+}
+
 func (f *File) Seek(offset int64) error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	if err := f.ifClosedError(); err != nil {
 		return err
 	}
