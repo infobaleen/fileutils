@@ -3,7 +3,6 @@ package fileutils
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -63,19 +62,21 @@ func CreateFileTmp(path string) (*File, error) {
 	return &f, nil
 }
 
-// Remove delete and closes the file if it is open and temporary. Errors are logged.
-func (f *File) RemoveIfTmp() {
+// Remove deletes and closes the file if it is open and temporary.
+func (f *File) RemoveIfTmp() error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
-	if f.file != nil && f.tmp {
-		defer f.file.Close()
-		f.file = nil
-		var err = os.Remove(f.filepath)
-		if err != nil {
-			log.Println("removal of partial file failed:", err.Error())
-		}
+	if f.file == nil || !f.tmp {
+		return nil
 	}
+
+	var err = os.Remove(f.filepath)
+	if err != nil {
+		err = errors.Fmt("removal of partial file failed: %v", err.Error())
+	}
+	err = errors.WithAnother(err, f.file.Close())
+	return err
 }
 
 func (f *File) ifClosedError() error {
