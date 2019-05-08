@@ -6,9 +6,12 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"time"
+	"unsafe"
 
+	"golang.org/x/sys/unix"
 	"github.com/infobaleen/errors"
 )
 
@@ -60,6 +63,43 @@ func CreateFileTmp(path string) (*File, error) {
 		return nil, err
 	}
 	return &f, nil
+}
+
+// Mmap sets the passed slice pointer to the contents of the file.
+// It is the users responsibility to stop using the slice after the file is closed.
+func (f *File) Mmap(slicePointer interface{}) error {
+	var v = reflect.ValueOf(slicePointer)
+	var t = v.Type()
+	if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Slice {
+		panic("not a pointer to a slice")
+	}
+
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	var info, err = f.file.Stat()
+	if err != nil {
+		return err
+	}
+	var size = int(info.Size())
+
+	var bytes []byte
+	if size > 0 {
+		bytes, err = unix.Mmap(int(f.file.Fd()), 0, size, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+		if err != nil {
+			return errors.Wrap(err, "mmap failed")
+		}
+	}
+
+	var sliceHeader = (*reflect.SliceHeader)(unsafe.Pointer(v.Pointer()))
+	var elementSize = t.Elem().Elem().Size()
+	sliceHeader.Len = size/int(elementSize)
+	sliceHeader.Cap = sliceHeader.Len
+	sliceHeader.Data = 0
+	if sliceHeader.Len > 0 {
+		sliceHeader.Data = uintptr(unsafe.Pointer(&bytes[0]))
+	}
+	return  nil
 }
 
 // Remove deletes and closes the file if it is open and temporary.
