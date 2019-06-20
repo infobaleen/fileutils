@@ -11,8 +11,8 @@ import (
 	"time"
 	"unsafe"
 
-	"golang.org/x/sys/unix"
 	"github.com/infobaleen/errors"
+	"golang.org/x/sys/unix"
 )
 
 var rnd = func() func() uint16 {
@@ -93,13 +93,13 @@ func (f *File) Mmap(slicePointer interface{}) error {
 
 	var sliceHeader = (*reflect.SliceHeader)(unsafe.Pointer(v.Pointer()))
 	var elementSize = t.Elem().Elem().Size()
-	sliceHeader.Len = size/int(elementSize)
+	sliceHeader.Len = size / int(elementSize)
 	sliceHeader.Cap = sliceHeader.Len
 	sliceHeader.Data = 0
 	if sliceHeader.Len > 0 {
 		sliceHeader.Data = uintptr(unsafe.Pointer(&bytes[0]))
 	}
-	return  nil
+	return nil
 }
 
 // Remove deletes and closes the file if it is open and temporary.
