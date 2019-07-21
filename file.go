@@ -141,15 +141,20 @@ func (f *File) Size() (int64, error) {
 	return info.Size(), err
 }
 
-func (f *File) Seek(offset int64) error {
+// Todo: Change method name to Seek if possible to implement io.Seeker
+func (f *File) SeekWhence(offset int64, whence int) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
 	if err := f.ifClosedError(); err != nil {
 		return err
 	}
-	var _, err = f.file.Seek(offset, 0)
+	var _, err = f.file.Seek(offset, whence)
 	return err
+}
+
+func (f *File) Seek(offset int64) error {
+	return f.SeekWhence(offset, 0)
 }
 
 func (f *File) Read(b []byte) (int, error) {
