@@ -147,7 +147,7 @@ func (f *File) SeekWhence(offset int64, whence int) (int64, error) {
 	defer f.mutex.Unlock()
 
 	if err := f.ifClosedError(); err != nil {
-		return err
+		return 0, err
 	}
 	return f.file.Seek(offset, whence)
 }
