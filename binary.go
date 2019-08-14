@@ -45,6 +45,7 @@ func writeBinary(w io.Writer, v interface{}) error {
 				return err
 			}
 		}
+		return nil
 	}
 	return errors.WithTrace(binary.Write(w, binary.LittleEndian, v))
 }
@@ -57,7 +58,7 @@ func WriteBinaryFile(filename string, v interface{}) error {
 	defer file.RemoveIfTmp()
 	err = writeBinary(file, v)
 	if err != nil {
-		return errors.WithTrace(err)
+		return err
 	}
 	return file.Close()
 }
