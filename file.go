@@ -82,16 +82,20 @@ func CreateFileTmp(path string) (*File, error) {
 // Mmap sets the passed slice pointer to the contents of the file.
 // It is the users responsibility to stop using the slice after the file is closed.
 func (f *File) Mmap(slicePointer interface{}) error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+	return Mmap(f.file, slicePointer)
+}
+
+// MmapF is a helper function to mmap the content of a os.File
+func Mmap(f *os.File, slicePointer interface{}) error {
 	var v = reflect.ValueOf(slicePointer)
 	var t = v.Type()
 	if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Slice {
 		panic("not a pointer to a slice")
 	}
 
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	var info, err = f.file.Stat()
+	var info, err = f.Stat()
 	if err != nil {
 		return err
 	}
@@ -99,7 +103,7 @@ func (f *File) Mmap(slicePointer interface{}) error {
 
 	var bytes []byte
 	if size > 0 {
-		bytes, err = unix.Mmap(int(f.file.Fd()), 0, size, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+		bytes, err = unix.Mmap(int(f.Fd()), 0, size, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
 		if err != nil {
 			return errors.Wrap(err, "mmap failed")
 		}
