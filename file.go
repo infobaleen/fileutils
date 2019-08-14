@@ -32,6 +32,20 @@ type File struct {
 	tmp      bool
 }
 
+func OpenFile(path string) (*File, error) {
+	var f File
+	var err error
+	f.filepath, err = filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	f.file, err = os.OpenFile(f.filepath, os.O_RDWR, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
 func CreateFile(path string) (*File, error) {
 	var f, err = CreateFileTmp(path)
 	if err != nil {

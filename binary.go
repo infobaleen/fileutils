@@ -25,8 +25,8 @@ func ReadBinaryFile(filename string, p interface{}) error {
 		if err != nil {
 			return errors.WithTrace(err)
 		}
-		var len = int(fileInfo.Size()/elemSize)
-		if val.Cap()<len {
+		var len = int(fileInfo.Size() / elemSize)
+		if val.Cap() < len {
 			val.Set(reflect.MakeSlice(val.Type(), 0, len))
 		}
 		val.SetLen(len)
