@@ -2,6 +2,7 @@ package fileutils
 
 import (
 	"encoding/binary"
+	"io"
 	"os"
 	"reflect"
 
@@ -34,14 +35,29 @@ func ReadBinaryFile(filename string, p interface{}) error {
 	return binary.Read(file, binary.LittleEndian, p)
 }
 
+func writeBinary(w io.Writer, v interface{}) error {
+	var val = reflect.Indirect(reflect.ValueOf(v))
+	if val.Kind() == reflect.Slice && val.Elem().Kind() == reflect.Slice {
+		var l = val.Len()
+		for i := 0; i < l; i++ {
+			var err = writeBinary(w, val.Index(i).Interface())
+			if err != nil  {
+				return err
+			}
+		}
+	}
+	return errors.WithTrace(binary.Write(w, binary.LittleEndian, v))
+}
+
 func WriteBinaryFile(filename string, v interface{}) error {
-	var file, err = os.Create(filename)
+	var file, err = CreateFileTmp(filename)
+	if err != nil {
+		return err
+	}
+	defer file.RemoveIfTmp()
+	err = writeBinary(file, v)
 	if err != nil {
 		return errors.WithTrace(err)
 	}
-	err = binary.Write(file, binary.LittleEndian, v)
-	if err != nil {
-		return errors.WithTrace(err)
-	}
-	return errors.WithTrace(file.Close())
+	return file.Close()
 }
