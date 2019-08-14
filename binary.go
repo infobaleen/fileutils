@@ -37,7 +37,7 @@ func ReadBinaryFile(filename string, p interface{}) error {
 
 func writeBinary(w io.Writer, v interface{}) error {
 	var val = reflect.Indirect(reflect.ValueOf(v))
-	if val.Kind() == reflect.Slice && val.Elem().Kind() == reflect.Slice {
+	if val.Kind() == reflect.Slice && val.Type().Elem().Kind() == reflect.Slice {
 		var l = val.Len()
 		for i := 0; i < l; i++ {
 			var err = writeBinary(w, val.Index(i).Interface())
