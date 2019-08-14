@@ -155,8 +155,9 @@ func (f *File) Size() (int64, error) {
 	return info.Size(), err
 }
 
-// Todo: Change method name to Seek if possible to implement io.Seeker
-func (f *File) SeekWhence(offset int64, whence int) (int64, error) {
+// Seek sets the byte offset of the next read or write. The whence argument controls how the offset is interpreted:
+// 0 means relative to the beginning, 1 means relative to the current offset, 2 means relative to the end.
+func (f *File) Seek(offset int64, whence int) (int64, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
@@ -164,11 +165,6 @@ func (f *File) SeekWhence(offset int64, whence int) (int64, error) {
 		return 0, err
 	}
 	return f.file.Seek(offset, whence)
-}
-
-func (f *File) Seek(offset int64) error {
-	var _, err = f.SeekWhence(offset, 0)
-	return err
 }
 
 func (f *File) Read(b []byte) (int, error) {
