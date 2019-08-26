@@ -1,6 +1,7 @@
 package fileutils
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -30,6 +31,8 @@ type File struct {
 	filepath string
 	file     *os.File
 	tmp      bool
+	readBuffer bufio.Reader
+	writeBuffer bufio.Writer
 }
 
 func OpenFile(path string) (*File, error) {
@@ -43,6 +46,7 @@ func OpenFile(path string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+	f.initBuffers()
 	return &f, nil
 }
 
@@ -56,6 +60,7 @@ func CreateFile(path string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+	f.initBuffers()
 	return f, nil
 }
 
@@ -76,7 +81,39 @@ func CreateFileTmp(path string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+	f.initBuffers()
 	return &f, nil
+}
+
+func (f *File) initBuffers() {
+	f.readBuffer = *bufio.NewReader(f.file)
+	f.writeBuffer = *bufio.NewWriter(f.file)
+}
+
+func (f *File) unreadReadBuffer() error {
+	var len = f.readBuffer.Buffered()
+	if len > 0 {
+		var _, err = f.file.Seek(-int64(len), 1)
+		if err != nil {
+			return err
+		}
+		_,_ = f.readBuffer.Discard(len)
+	}
+	return nil
+}
+
+func (f *File) flushWriteBuffer() error {
+	return f.writeBuffer.Flush()
+}
+
+func (f *File) emptyBuffers() error {
+	if err := f.unreadReadBuffer(); err != nil {
+		return err
+	}
+	if err := f.flushWriteBuffer(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Mmap sets the passed slice pointer to the contents of the file.
@@ -87,7 +124,7 @@ func (f *File) Mmap(slicePointer interface{}) error {
 	return Mmap(f.file, slicePointer)
 }
 
-// MmapF is a helper function to mmap the content of a os.File
+// Mmap is a helper function to mmap the content of a os.File
 func Mmap(f *os.File, slicePointer interface{}) error {
 	var v = reflect.ValueOf(slicePointer)
 	var t = v.Type()
@@ -144,17 +181,32 @@ func (f *File) ifClosedError() error {
 	return nil
 }
 
+func (f *File) Read(b []byte) (int, error) {
+	if err := f.ifClosedError(); err != nil {
+		return 0, err
+	}
+	if err := f.flushWriteBuffer(); err != nil {
+		return 0, err
+	}
+	return f.readBuffer.Read(b)
+}
+
 func (f *File) Write(b []byte) (int, error) {
 	if err := f.ifClosedError(); err != nil {
 		return 0, err
 	}
-	return f.file.Write(b)
+	if err := f.unreadReadBuffer(); err != nil {
+		return 0, err
+	}
+	return f.writeBuffer.Write(b)
 }
 
 func (f *File) Size() (int64, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-
+	if err := f.emptyBuffers(); err != nil {
+		return 0, err
+	}
 	var info, err = f.file.Stat()
 	return info.Size(), err
 }
@@ -164,18 +216,13 @@ func (f *File) Size() (int64, error) {
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-
+	if err := f.emptyBuffers(); err != nil {
+		return 0, err
+	}
 	if err := f.ifClosedError(); err != nil {
 		return 0, err
 	}
 	return f.file.Seek(offset, whence)
-}
-
-func (f *File) Read(b []byte) (int, error) {
-	if err := f.ifClosedError(); err != nil {
-		return 0, err
-	}
-	return f.file.Read(b)
 }
 
 func (f *File) Remove() error {
@@ -211,8 +258,12 @@ func (f *File) ChangeName(newName string) error {
 func (f *File) Move(newPath string) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
+
+
 	if err := f.ifClosedError(); err != nil {
 		return err
+	} else if f.tmp {
+		errors.Fmt("can't move temporary file")
 	}
 
 	var err error
@@ -227,15 +278,25 @@ func (f *File) Finalize() error {
 	if err := f.ifClosedError(); err != nil {
 		return err
 	}
-	if f.tmp {
-		errors.Fmt("file %q is not temporary")
+	if !f.tmp {
+		errors.Fmt("file %q is not temporary", f.filepath)
 	}
 	return f.finalize()
 }
 
+func (f *File) Sync() error {
+	if err := f.emptyBuffers(); err != nil {
+		return err
+	}
+	if err := f.file.Sync(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (f *File) finalize() error {
 	if f.tmp {
-		var err = f.file.Sync()
+		var err = f.Sync()
 		if err != nil {
 			return err
 		}
@@ -255,11 +316,13 @@ func (f *File) Close() error {
 	if err := f.ifClosedError(); err != nil {
 		return err
 	}
-	var err = f.finalize()
-	if err != nil {
+	if err := f.finalize(); err != nil {
 		return err
 	}
-	err = f.file.Close()
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	var err = f.file.Close()
 	f.file = nil
 	return err
 }
