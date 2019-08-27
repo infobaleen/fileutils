@@ -75,7 +75,7 @@ func CreateFileTmp(path string) (*File, error) {
 	var f = File{tmp: true}
 	err = os.ErrExist
 	for i := 0; i < 100 && os.IsExist(err); i++ {
-		f.filepath = fmt.Sprintf("%s.%d", path, rnd())
+		f.filepath = fmt.Sprintf("%s.tmp%d", path, rnd())
 		f.file, err = os.OpenFile(f.filepath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
 	}
 	if err != nil {
