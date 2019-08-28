@@ -41,7 +41,7 @@ func writeBinary(w io.Writer, v interface{}) error {
 		var l = val.Len()
 		for i := 0; i < l; i++ {
 			var err = writeBinary(w, val.Index(i).Interface())
-			if err != nil  {
+			if err != nil {
 				return err
 			}
 		}

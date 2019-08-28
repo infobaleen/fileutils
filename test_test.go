@@ -11,7 +11,7 @@ func TestBufferedIo(t *testing.T) {
 	is.NoErr(err)
 	defer f.Remove()
 
-	_, err = f.Write([]byte{0,1,2,3,4,5,6,7})
+	_, err = f.Write([]byte{0, 1, 2, 3, 4, 5, 6, 7})
 	is.NoErr(err)
 	_, err = f.Seek(4, 0)
 	is.NoErr(err)
@@ -24,7 +24,7 @@ func TestBufferedIo(t *testing.T) {
 	_, err = f.Read(oneByte[:])
 	is.NoErr(err)
 	is.Equal(oneByte[0], byte(6))
-	_, err = f.Write([]byte{7,8,9})
+	_, err = f.Write([]byte{7, 8, 9})
 	is.NoErr(err)
 	var size int64
 	size, err = f.Size()

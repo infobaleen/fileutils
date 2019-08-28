@@ -27,11 +27,12 @@ var rnd = func() func() uint16 {
 }()
 
 type File struct {
-	mutex    sync.Mutex
-	filepath string
-	file     *os.File
-	tmp      bool
-	readBuffer bufio.Reader
+	mutex       sync.Mutex
+	filepath    string
+	file        *os.File
+	tmp         bool
+	onClose     []func() error
+	readBuffer  bufio.Reader
 	writeBuffer bufio.Writer
 }
 
@@ -97,7 +98,7 @@ func (f *File) unreadReadBuffer() error {
 		if err != nil {
 			return err
 		}
-		_,_ = f.readBuffer.Discard(len)
+		_, _ = f.readBuffer.Discard(len)
 	}
 	return nil
 }
@@ -121,11 +122,13 @@ func (f *File) emptyBuffers() error {
 func (f *File) Mmap(slicePointer interface{}) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-	return Mmap(f.file, slicePointer)
+	var unmap, err = Mmap(f.file, slicePointer)
+	f.onClose = append(f.onClose, unmap)
+	return err
 }
 
 // Mmap is a helper function to mmap the content of a os.File
-func Mmap(f *os.File, slicePointer interface{}) error {
+func Mmap(f *os.File, slicePointer interface{}) (func() error, error) {
 	var v = reflect.ValueOf(slicePointer)
 	var t = v.Type()
 	if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Slice {
@@ -134,7 +137,7 @@ func Mmap(f *os.File, slicePointer interface{}) error {
 
 	var info, err = f.Stat()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var size = int(info.Size())
 
@@ -142,7 +145,7 @@ func Mmap(f *os.File, slicePointer interface{}) error {
 	if size > 0 {
 		bytes, err = unix.Mmap(int(f.Fd()), 0, size, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
 		if err != nil {
-			return errors.Wrap(err, "mmap failed")
+			return nil, errors.Wrap(err, "mmap failed")
 		}
 	}
 
@@ -154,7 +157,9 @@ func Mmap(f *os.File, slicePointer interface{}) error {
 	if sliceHeader.Len > 0 {
 		sliceHeader.Data = uintptr(unsafe.Pointer(&bytes[0]))
 	}
-	return nil
+	return func() error {
+		return unix.Munmap(bytes)
+	}, nil
 }
 
 // Remove deletes and closes the file if it is open and temporary.
@@ -259,7 +264,6 @@ func (f *File) Move(newPath string) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
-
 	if err := f.ifClosedError(); err != nil {
 		return err
 	} else if f.tmp {
@@ -316,13 +320,14 @@ func (f *File) Close() error {
 	if err := f.ifClosedError(); err != nil {
 		return err
 	}
-	if err := f.finalize(); err != nil {
-		return err
+	var err = f.finalize()
+	err = errors.WithAnother(err, f.Sync())
+	for len(f.onClose) > 0 {
+		var fn = f.onClose[len(f.onClose)-1]
+		f.onClose = f.onClose[:len(f.onClose)-2]
+		err = errors.WithAnother(err, fn())
 	}
-	if err := f.Sync(); err != nil {
-		return err
-	}
-	var err = f.file.Close()
+	err = errors.WithAnother(err, f.file.Close())
 	f.file = nil
 	return err
 }
@@ -330,24 +335,22 @@ func (f *File) Close() error {
 func ReadFile(filename string) ([]byte, error) {
 	var file, err = os.Open(filename)
 	if err != nil {
-		return nil, errors.WithAftermath(err, file.Close())
+		return nil, err
 	}
 	var content []byte
 	content, err = ioutil.ReadAll(file)
-	if err != nil {
-		return nil, errors.WithAftermath(err, file.Close())
-	}
-	return content, file.Close()
+	return content, errors.WithAftermath(err, file.Close())
 }
 
 func WriteFile(filename string, content []byte) error {
-	var file, err = os.Create(filename)
+	var file, err = CreateFileTmp(filename)
 	if err != nil {
-		return errors.WithAftermath(err, file.Close())
+		return err
 	}
+	defer file.RemoveIfTmp()
 	_, err = file.Write(content)
 	if err != nil {
-		return errors.WithAftermath(err, file.Close())
+		return err
 	}
 	return file.Close()
 }
