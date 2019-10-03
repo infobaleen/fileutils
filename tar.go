@@ -2,6 +2,8 @@ package fileutils
 
 import (
 	"archive/tar"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -72,7 +74,7 @@ func (tw *TarWriter) AddDir(dir string) error {
 	})
 }
 
-func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
+func (tw *TarWriter) AddFileFunc(file string, size int64, f func(contentWriter io.Writer) error) error {
 	var err = (*tar.Writer)(tw).WriteHeader(&tar.Header{
 		Typeflag: tar.TypeReg,
 		Name:     file,
@@ -82,8 +84,33 @@ func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy((*tar.Writer)(tw), content)
-	return err
+	return f((*tar.Writer)(tw))
+}
+
+func (tw *TarWriter) AddFileBytes(file string, content []byte) error {
+	return tw.AddFileFunc(file, int64(len(content)), func(contentWriter io.Writer) error {
+		var _, err = contentWriter.Write(content)
+		return err
+	})
+}
+
+func (tw *TarWriter) AddFileJson(file string, size int64, content ...interface{}) error {
+	var buffer bytes.Buffer
+	var enc = json.NewEncoder(&buffer)
+	for i := range content {
+		var err = enc.Encode(content[i])
+		if err != nil {
+			return err
+		}
+	}
+	return tw.AddFileBytes(file, buffer.Bytes())
+}
+
+func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
+	return tw.AddFileFunc(file, size, func(contentWriter io.Writer) error {
+		var _, err = io.Copy(contentWriter, content)
+		return err
+	})
 }
 
 // AddPath reads a file or directory from a path and adds its content to the archive, relative to the specified prefix.
