@@ -94,7 +94,7 @@ func (tw *TarWriter) AddFileBytes(file string, content []byte) error {
 	})
 }
 
-func (tw *TarWriter) AddFileJson(file string, size int64, content ...interface{}) error {
+func (tw *TarWriter) AddFileJson(file string, content ...interface{}) error {
 	var buffer bytes.Buffer
 	var enc = json.NewEncoder(&buffer)
 	for i := range content {
