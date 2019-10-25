@@ -324,7 +324,7 @@ func (f *File) Close() error {
 	err = errors.WithAnother(err, f.Sync())
 	for len(f.onClose) > 0 {
 		var fn = f.onClose[len(f.onClose)-1]
-		f.onClose = f.onClose[:len(f.onClose)-2]
+		f.onClose = f.onClose[:len(f.onClose)-1]
 		err = errors.WithAnother(err, fn())
 	}
 	err = errors.WithAnother(err, f.file.Close())
