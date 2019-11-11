@@ -122,6 +122,9 @@ func (f *File) emptyBuffers() error {
 func (f *File) Mmap(slicePointer interface{}) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
+	if err := f.emptyBuffers(); err != nil {
+		return err
+	}
 	var unmap, err = Mmap(f.file, slicePointer)
 	f.onClose = append(f.onClose, unmap)
 	return err
@@ -135,6 +138,9 @@ func Mmap(f *os.File, slicePointer interface{}) (func() error, error) {
 		panic("not a pointer to a slice")
 	}
 
+	if err := f.Sync(); err != nil {
+		return nil, err
+	}
 	var info, err = f.Stat()
 	if err != nil {
 		return nil, err
