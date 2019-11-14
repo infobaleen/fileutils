@@ -128,9 +128,7 @@ func (tw *TarWriter) AddTaggedStruct(archivePrefix string, v interface{}) error 
 		var path = path.Join(archivePrefix, fileName)
 		switch fileType {
 		case TagKeyBinaryFile:
-			return tw.AddFileFunc(path, int64(sizeBinary(field)), func(writer io.Writer) error {
-				return writeBinary(writer, field)
-			})
+			return tw.AddFileBinary(path, field)
 		case TagKeyJsonFile:
 			return tw.AddFileJson(path, field)
 		default:
