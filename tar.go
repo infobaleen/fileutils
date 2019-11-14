@@ -2,6 +2,8 @@ package fileutils
 
 import (
 	"archive/tar"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -73,7 +75,7 @@ func (tw *TarWriter) AddDir(dir string) error {
 	})
 }
 
-func (tw *TarWriter) AddFileFunc(file string, size int64, f func(io.Writer) error) error {
+func (tw *TarWriter) AddFileFunc(file string, size int64, f func(contentWriter io.Writer) error) error {
 	var err = (*tar.Writer)(tw).WriteHeader(&tar.Header{
 		Typeflag: tar.TypeReg,
 		Name:     file,
@@ -90,12 +92,30 @@ func (tw *TarWriter) AddFileFunc(file string, size int64, f func(io.Writer) erro
 	return (*tar.Writer)(tw).Flush()
 }
 
-func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
-	var err = tw.AddFileFunc(file, size, func(writer io.Writer) error {
-		var _, err = io.Copy(writer, content)
+func (tw *TarWriter) AddFileBytes(file string, content []byte) error {
+	return tw.AddFileFunc(file, int64(len(content)), func(contentWriter io.Writer) error {
+		var _, err = contentWriter.Write(content)
 		return err
 	})
-	return err
+}
+
+func (tw *TarWriter) AddFileJson(file string, content ...interface{}) error {
+	var buffer bytes.Buffer
+	var enc = json.NewEncoder(&buffer)
+	for i := range content {
+		var err = enc.Encode(content[i])
+		if err != nil {
+			return err
+		}
+	}
+	return tw.AddFileBytes(file, buffer.Bytes())
+}
+
+func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
+	return tw.AddFileFunc(file, size, func(contentWriter io.Writer) error {
+		var _, err = io.Copy(contentWriter, content)
+		return err
+	})
 }
 
 func (tw *TarWriter) AddTaggedStruct(archivePrefix string, v interface{}) error {
