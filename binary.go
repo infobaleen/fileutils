@@ -21,12 +21,12 @@ func ReadBinaryFile(filename string, p interface{}) error {
 	}
 	val = val.Elem()
 	if val.Kind() == reflect.Slice {
-		var elemSize = int64(val.Type().Elem().Size())
+		var elemSize = binary.Size(reflect.Zero(val.Type().Elem()))
 		var fileInfo, err = file.Stat()
 		if err != nil {
 			return errors.WithTrace(err)
 		}
-		var len = int(fileInfo.Size() / elemSize)
+		var len = int(fileInfo.Size() / int64(elemSize))
 		if val.Cap() < len {
 			val.Set(reflect.MakeSlice(val.Type(), 0, len))
 		}
@@ -35,12 +35,26 @@ func ReadBinaryFile(filename string, p interface{}) error {
 	return binary.Read(file, binary.LittleEndian, p)
 }
 
-func writeBinary(w io.Writer, v interface{}) error {
+func sizeBinary(v reflect.Value) int {
+	var val = reflect.Indirect(reflect.ValueOf(v))
+	if val.Kind() == reflect.Slice {
+		var total int
+		var l = val.Len()
+		for i := 0; i < l; i++ {
+			total += sizeBinary(val.Index(i))
+		}
+		return total
+	}
+	return binary.Size(v.Interface())
+}
+
+func writeBinary(w io.Writer, v reflect.Value) error {
+	v = recursiveIndirect(v)
 	var val = reflect.Indirect(reflect.ValueOf(v))
 	if val.Kind() == reflect.Slice && val.Type().Elem().Kind() == reflect.Slice {
 		var l = val.Len()
 		for i := 0; i < l; i++ {
-			var err = writeBinary(w, val.Index(i).Interface())
+			var err = writeBinary(w, val.Index(i))
 			if err != nil {
 				return err
 			}
@@ -50,13 +64,17 @@ func writeBinary(w io.Writer, v interface{}) error {
 	return errors.WithTrace(binary.Write(w, binary.LittleEndian, v))
 }
 
+func SizeBinary(v interface{}) int {
+	return sizeBinary(toValue(v))
+}
+
 func WriteBinaryFile(filename string, v interface{}) error {
 	var file, err = CreateFileTmp(filename)
 	if err != nil {
 		return err
 	}
 	defer file.RemoveIfTmp()
-	err = writeBinary(file, v)
+	err = writeBinary(file, toValue(v))
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"reflect"
 
 	"github.com/infobaleen/errors"
 )
@@ -72,7 +73,7 @@ func (tw *TarWriter) AddDir(dir string) error {
 	})
 }
 
-func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
+func (tw *TarWriter) AddFileFunc(file string, size int64, f func(io.Writer) error) error {
 	var err = (*tar.Writer)(tw).WriteHeader(&tar.Header{
 		Typeflag: tar.TypeReg,
 		Name:     file,
@@ -82,8 +83,33 @@ func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy((*tar.Writer)(tw), content)
+	err = f((*tar.Writer)(tw))
+	if err != nil {
+		return err
+	}
+	return (*tar.Writer)(tw).Flush()
+}
+
+func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
+	var err = tw.AddFileFunc(file, size, func(writer io.Writer) error {
+		var _, err = io.Copy(writer, content)
+		return err
+	})
 	return err
+}
+
+func (tw *TarWriter) AddTaggedStruct(archivePrefix string, v interface{}) error {
+	return IterateTaggedStruct(v, func(fileType, fileName string, field reflect.Value) error {
+		fileName = path.Join(archivePrefix, fileName)
+		switch fileType {
+		case TagKeyBinaryFile:
+			return tw.AddFileFunc(fileName, int64(sizeBinary(field)), func(writer io.Writer) error {
+				return writeBinary(writer, field)
+			})
+		default:
+			return fmt.Errorf("unknown file type %q", fileType)
+		}
+	})
 }
 
 // AddPath reads a file or directory from a path and adds its content to the archive, relative to the specified prefix.
