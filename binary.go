@@ -21,7 +21,7 @@ func ReadBinaryFile(filename string, p interface{}) error {
 	}
 	defer file.Close()
 	if val.Kind() == reflect.Slice {
-		var elemSize = sizeBinary(reflect.Zero(val.Type().Elem()))
+		var elemSize = sizeBinary(reflect.New(val.Type().Elem()))
 		var fileInfo, err = file.Stat()
 		if err != nil {
 			return errors.WithTrace(err)
