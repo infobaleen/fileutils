@@ -3,7 +3,6 @@ package fileutils
 import (
 	"archive/tar"
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -101,9 +100,8 @@ func (tw *TarWriter) AddFileBytes(file string, content []byte) error {
 
 func (tw *TarWriter) AddFileJson(file string, content ...interface{}) error {
 	var buffer bytes.Buffer
-	var enc = json.NewEncoder(&buffer)
 	for i := range content {
-		var err = enc.Encode(content[i])
+		var err = WriteJson(&buffer, &content[i])
 		if err != nil {
 			return err
 		}
@@ -120,12 +118,14 @@ func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
 
 func (tw *TarWriter) AddTaggedStruct(archivePrefix string, v interface{}) error {
 	return IterateTaggedStruct(v, func(fileType, fileName string, field reflect.Value) error {
-		fileName = path.Join(archivePrefix, fileName)
+		var path = path.Join(archivePrefix, fileName)
 		switch fileType {
 		case TagKeyBinaryFile:
-			return tw.AddFileFunc(fileName, int64(sizeBinary(field)), func(writer io.Writer) error {
+			return tw.AddFileFunc(path, int64(sizeBinary(field)), func(writer io.Writer) error {
 				return writeBinary(writer, field)
 			})
+		case TagKeyJsonFile:
+			return tw.AddFileJson(path, field)
 		default:
 			return fmt.Errorf("unknown file type %q", fileType)
 		}

@@ -2,7 +2,9 @@ package fileutils
 
 import (
 	"encoding/json"
+	"io"
 	"os"
+	"reflect"
 
 	"github.com/infobaleen/errors"
 )
@@ -20,15 +22,24 @@ func ReadJsonFile(filename string, p interface{}) error {
 }
 
 func WriteJsonFile(filename string, v interface{}) error {
-	var file, err = os.Create(filename)
+	var file, err = CreateFileTmp(filename)
+	defer file.RemoveIfTmp()
 	if err != nil {
-		return errors.WithAftermath(err, file.Close())
+		return err
 	}
-	var enc = json.NewEncoder(file)
-	enc.SetIndent("", "\t")
-	err = enc.Encode(v)
+	err = WriteJson(file, v)
 	if err != nil {
-		return errors.WithAftermath(err, file.Close())
+		return err
 	}
 	return file.Close()
+}
+
+func WriteJson(w io.Writer, v interface{}) error {
+	return writeJson(w, toValue(v))
+}
+
+func writeJson(w io.Writer, value reflect.Value) error {
+	var enc = json.NewEncoder(w)
+	enc.SetIndent("", "\t")
+	return enc.Encode(recursiveIndirect(value).Addr().Interface())
 }
