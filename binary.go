@@ -10,15 +10,15 @@ import (
 )
 
 func ReadBinaryFile(filename string, p interface{}) error {
+	var val = reflect.ValueOf(p)
+	if val.Kind() != reflect.Ptr {
+		return errors.Fmt("expected pointer")
+	}
 	var file, err = os.Open(filename)
 	if err != nil {
 		return errors.WithTrace(err)
 	}
 	defer file.Close()
-	var val = reflect.ValueOf(p)
-	if val.Kind() != reflect.Ptr {
-		return errors.Fmt("expected pointer")
-	}
 	val = recursiveIndirect(val)
 	if val.Kind() == reflect.Slice {
 		var elemSize = sizeBinary(reflect.Zero(val.Type().Elem()))
@@ -50,11 +50,10 @@ func sizeBinary(v reflect.Value) int {
 
 func writeBinary(w io.Writer, v reflect.Value) error {
 	v = recursiveIndirect(v)
-	var val = reflect.Indirect(reflect.ValueOf(v))
-	if val.Kind() == reflect.Slice && val.Type().Elem().Kind() == reflect.Slice {
-		var l = val.Len()
+	if v.Kind() == reflect.Slice && v.Type().Elem().Kind() == reflect.Slice {
+		var l = v.Len()
 		for i := 0; i < l; i++ {
-			var err = writeBinary(w, val.Index(i))
+			var err = writeBinary(w, v.Index(i))
 			if err != nil {
 				return err
 			}
