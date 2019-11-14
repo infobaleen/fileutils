@@ -10,16 +10,16 @@ import (
 )
 
 func ReadBinaryFile(filename string, p interface{}) error {
-	var val = reflect.ValueOf(p)
+	var val = toValue(p)
 	if val.Kind() != reflect.Ptr {
 		return errors.Fmt("expected pointer")
 	}
+	val = recursiveIndirect(val)
 	var file, err = os.Open(filename)
 	if err != nil {
 		return errors.WithTrace(err)
 	}
 	defer file.Close()
-	val = recursiveIndirect(val)
 	if val.Kind() == reflect.Slice {
 		var elemSize = sizeBinary(reflect.Zero(val.Type().Elem()))
 		var fileInfo, err = file.Stat()
@@ -36,7 +36,7 @@ func ReadBinaryFile(filename string, p interface{}) error {
 }
 
 func sizeBinary(v reflect.Value) int {
-	var val = reflect.Indirect(reflect.ValueOf(v))
+	var val = recursiveIndirect(v)
 	if val.Kind() == reflect.Slice {
 		var total int
 		var l = val.Len()
@@ -64,7 +64,7 @@ func writeBinary(w io.Writer, v reflect.Value) error {
 }
 
 func SizeBinary(v interface{}) int {
-	return sizeBinary(toValue(v))
+	return sizeBinary(recursiveIndirect(toValue(v)))
 }
 
 func WriteBinaryFile(filename string, v interface{}) error {
