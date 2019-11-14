@@ -19,9 +19,9 @@ func ReadBinaryFile(filename string, p interface{}) error {
 	if val.Kind() != reflect.Ptr {
 		return errors.Fmt("expected pointer")
 	}
-	val = val.Elem()
+	val = recursiveIndirect(val)
 	if val.Kind() == reflect.Slice {
-		var elemSize = binary.Size(reflect.Zero(val.Type().Elem()))
+		var elemSize = sizeBinary(reflect.Zero(val.Type().Elem()))
 		var fileInfo, err = file.Stat()
 		if err != nil {
 			return errors.WithTrace(err)
