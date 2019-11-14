@@ -41,5 +41,5 @@ func WriteJson(w io.Writer, v interface{}) error {
 func writeJson(w io.Writer, value reflect.Value) error {
 	var enc = json.NewEncoder(w)
 	enc.SetIndent("", "\t")
-	return enc.Encode(recursiveIndirect(value).Addr().Interface())
+	return enc.Encode(referenceInterface(value))
 }
