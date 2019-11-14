@@ -75,7 +75,7 @@ func toValue(v interface{}) reflect.Value {
 }
 
 func recursiveIndirect(v reflect.Value) reflect.Value {
-	for v.Kind() == reflect.Ptr {
+	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
 		v = v.Elem()
 	}
 	return v
