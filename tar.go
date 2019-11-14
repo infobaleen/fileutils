@@ -109,6 +109,13 @@ func (tw *TarWriter) AddFileJson(file string, content ...interface{}) error {
 	return tw.AddFileBytes(file, buffer.Bytes())
 }
 
+func (tw *TarWriter) AddFileBinary(file string, content interface{}) error {
+	var v = recursiveIndirect(toValue(content))
+	return tw.AddFileFunc(file, int64(sizeBinary(v)), func(contentWriter io.Writer) error {
+		return writeBinary(contentWriter, v)
+	})
+}
+
 func (tw *TarWriter) AddFile(file string, size int64, content io.Reader) error {
 	return tw.AddFileFunc(file, size, func(contentWriter io.Writer) error {
 		var _, err = io.Copy(contentWriter, content)
