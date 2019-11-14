@@ -45,7 +45,7 @@ func sizeBinary(v reflect.Value) int {
 		}
 		return total
 	}
-	return binary.Size(v.Interface())
+	return binary.Size(referenceInterface(v))
 }
 
 func writeBinary(w io.Writer, v reflect.Value) error {
@@ -61,7 +61,7 @@ func writeBinary(w io.Writer, v reflect.Value) error {
 		}
 		return nil
 	}
-	return errors.WithTrace(binary.Write(w, binary.LittleEndian, v.Addr().Interface()))
+	return errors.WithTrace(binary.Write(w, binary.LittleEndian, referenceInterface(v)))
 }
 
 func SizeBinary(v interface{}) int {
