@@ -81,12 +81,10 @@ func recursiveIndirect(v reflect.Value) reflect.Value {
 	return v
 }
 
-func referenceInterface(v reflect.Value) interface{} {
+func getInterface(v reflect.Value) interface{} {
 	v = recursiveIndirect(v)
-	switch v.Kind() {
-	case reflect.Slice, reflect.Map, reflect.String:
-		return v.Interface()
-	default:
+	if v.CanAddr() {
 		return v.Addr().Interface()
 	}
+	return v.Interface()
 }
