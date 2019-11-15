@@ -63,8 +63,12 @@ func writeBinary(w io.Writer, v reflect.Value) error {
 	return errors.WithTrace(binary.Write(w, binary.LittleEndian, getInterface(v)))
 }
 
+func WriteBinary(w io.Writer, v interface{}) error {
+	return writeBinary(w, toValue(v))
+}
+
 func SizeBinary(v interface{}) int {
-	return sizeBinary(recursiveIndirect(toValue(v)))
+	return sizeBinary(toValue(v))
 }
 
 func WriteBinaryFile(filename string, v interface{}) error {

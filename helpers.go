@@ -21,11 +21,11 @@ func PopulateTaggedStruct(dir string, p interface{}) error {
 
 	for i := 0; i < val.NumField(); i++ {
 		if tag := val.Type().Field(i).Tag.Get(TagKeyBinaryFile); tag != "" {
-			if err := ReadBinaryFile(path.Join(dir, tag), val.Field(i).Addr().Interface()); err != nil {
+			if err := ReadBinaryFile(path.Join(dir, tag), getAddrInterface(val.Field(i))); err != nil {
 				return err
 			}
 		} else if tag := val.Type().Field(i).Tag.Get(TagKeyJsonFile); tag != "" {
-			if err := ReadJsonFile(path.Join(dir, tag), val.Field(i).Addr().Interface()); err != nil {
+			if err := ReadJsonFile(path.Join(dir, tag), getAddrInterface(val.Field(i))); err != nil {
 				return err
 			}
 		}
@@ -40,11 +40,11 @@ func IterateTaggedStruct(v interface{}, f func(fileType, fileName string, field 
 	}
 	for i := 0; i < val.NumField(); i++ {
 		if tag := val.Type().Field(i).Tag.Get(TagKeyBinaryFile); tag != "" {
-			if err := f(TagKeyBinaryFile, tag, val.Field(i).Addr()); err != nil {
+			if err := f(TagKeyBinaryFile, tag, val.Field(i)); err != nil {
 				return err
 			}
 		} else if tag := val.Type().Field(i).Tag.Get(TagKeyJsonFile); tag != "" {
-			if err := f(TagKeyJsonFile, tag, val.Field(i).Addr()); err != nil {
+			if err := f(TagKeyJsonFile, tag, val.Field(i)); err != nil {
 				return err
 			}
 		}
@@ -57,9 +57,9 @@ func WriteTaggedStructFiles(dir string, v interface{}) error {
 		var path = path.Join(dir, fileName)
 		switch fileType {
 		case TagKeyBinaryFile:
-			return WriteBinaryFile(path, field.Addr().Interface())
+			return WriteBinaryFile(path, field)
 		case TagKeyJsonFile:
-			return WriteJsonFile(path, field.Addr().Interface())
+			return WriteJsonFile(path, field)
 		default:
 			return fmt.Errorf("unknown file type %q", fileType)
 		}
@@ -87,4 +87,8 @@ func getInterface(v reflect.Value) interface{} {
 		return v.Addr().Interface()
 	}
 	return v.Interface()
+}
+
+func getAddrInterface(v reflect.Value) interface{} {
+	return recursiveIndirect(v).Addr().Interface()
 }
