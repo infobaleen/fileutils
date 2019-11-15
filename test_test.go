@@ -2,6 +2,9 @@ package fileutils
 
 import (
 	"github.com/matryer/is"
+	"io"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -30,4 +33,43 @@ func TestBufferedIo(t *testing.T) {
 	size, err = f.Size()
 	is.NoErr(err)
 	is.Equal(size, int64(10))
+}
+
+type S struct {
+	A int64 `json-file:"a"`
+	B int64 `binary-file:"b"`
+}
+
+var original = S{1, 2}
+
+func TestTaggedStructDir(t *testing.T) {
+	var is = is.New(t)
+	var tmpDir, err = ioutil.TempDir("", "")
+	is.NoErr(err)
+	defer os.Remove(tmpDir)
+
+	err = WriteTaggedStructFiles(tmpDir, original)
+	is.NoErr(err)
+	var check S
+	is.NoErr(PopulateTaggedStruct(tmpDir, &check))
+	is.Equal(original, check)
+}
+
+func TestTaggedStructTar(t *testing.T) {
+	var is = is.New(t)
+	var tmpDir, err = ioutil.TempDir("", "")
+	is.NoErr(err)
+	//defer os.Remove(tmpDir)
+
+	var r, w = io.Pipe()
+	go func() {
+		var tar = NewTarWriter(w)
+		is.NoErr(tar.AddTaggedStruct("", original))
+		is.NoErr(tar.Close())
+		is.NoErr(w.Close())
+	}()
+	is.NoErr(Untar(tmpDir, r))
+	var check S
+	is.NoErr(PopulateTaggedStruct(tmpDir, &check))
+	is.Equal(original, check)
 }

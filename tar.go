@@ -100,11 +100,9 @@ func (tw *TarWriter) AddFileBytes(file string, content []byte) error {
 
 func (tw *TarWriter) AddFileJson(file string, content ...interface{}) error {
 	var buffer bytes.Buffer
-	for i := range content {
-		var err = WriteJson(&buffer, &content[i])
-		if err != nil {
-			return err
-		}
+	var err = WriteJson(&buffer, content...)
+	if err != nil {
+		return err
 	}
 	return tw.AddFileBytes(file, buffer.Bytes())
 }

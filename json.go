@@ -21,21 +21,27 @@ func ReadJsonFile(filename string, p interface{}) error {
 	return file.Close()
 }
 
-func WriteJsonFile(filename string, v interface{}) error {
+func WriteJsonFile(filename string, v ...interface{}) error {
 	var file, err = CreateFileTmp(filename)
 	defer file.RemoveIfTmp()
 	if err != nil {
 		return err
 	}
-	err = WriteJson(file, v)
+	err = WriteJson(file, v...)
 	if err != nil {
 		return err
 	}
 	return file.Close()
 }
 
-func WriteJson(w io.Writer, v interface{}) error {
-	return writeJson(w, toValue(v))
+func WriteJson(w io.Writer, v ...interface{}) error {
+	for i := range v {
+		var err = writeJson(w, toValue(v[i]))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func writeJson(w io.Writer, value reflect.Value) error {
