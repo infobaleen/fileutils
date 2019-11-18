@@ -5,14 +5,18 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 )
 
 func TestBufferedIo(t *testing.T) {
 	var is = is.New(t)
-	var f, err = CreateFileTmp("fileutils")
+	var tmpDir, err = ioutil.TempDir("", "")
 	is.NoErr(err)
-	defer f.Remove()
+	defer os.RemoveAll(tmpDir)
+	var f *File
+	f, err = CreateFile(path.Join(tmpDir, "test"))
+	is.NoErr(err)
 
 	_, err = f.Write([]byte{0, 1, 2, 3, 4, 5, 6, 7})
 	is.NoErr(err)
@@ -46,7 +50,7 @@ func TestTaggedStructDir(t *testing.T) {
 	var is = is.New(t)
 	var tmpDir, err = ioutil.TempDir("", "")
 	is.NoErr(err)
-	defer os.Remove(tmpDir)
+	defer os.RemoveAll(tmpDir)
 
 	err = WriteTaggedStructFiles(tmpDir, original)
 	is.NoErr(err)
@@ -59,7 +63,7 @@ func TestTaggedStructTar(t *testing.T) {
 	var is = is.New(t)
 	var tmpDir, err = ioutil.TempDir("", "")
 	is.NoErr(err)
-	//defer os.Remove(tmpDir)
+	defer os.Remove(tmpDir)
 
 	var r, w = io.Pipe()
 	go func() {
@@ -72,4 +76,18 @@ func TestTaggedStructTar(t *testing.T) {
 	var check S
 	is.NoErr(PopulateTaggedStruct(tmpDir, &check))
 	is.Equal(original, check)
+}
+
+func TestReadJsonFileAppend(t *testing.T) {
+	var is = is.New(t)
+	var tmpDir, err = ioutil.TempDir("", "")
+	is.NoErr(err)
+	defer os.Remove(tmpDir)
+	is.NoErr(WriteBinaryFile(path.Join(tmpDir, "test"), []byte("2 3 4 5")))
+	var ints = []int{1}
+	is.NoErr(ReadJsonFileAppend(path.Join(tmpDir, "test"), &ints))
+	is.Equal(5, len(ints))
+	for i, v := range ints {
+		is.Equal(i+1, v)
+	}
 }
