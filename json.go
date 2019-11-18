@@ -36,7 +36,7 @@ func ReadJsonFileAppend(filename string, p interface{}) error {
 	var dec = json.NewDecoder(file)
 	var single = reflect.New(value.Type().Elem())
 	for {
-		single.Set(reflect.Zero(value.Type().Elem()))
+		single.Elem().Set(reflect.Zero(value.Type().Elem()))
 		err = dec.Decode(single.Interface())
 		if err == io.EOF {
 			return nil
