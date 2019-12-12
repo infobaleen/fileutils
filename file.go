@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/infobaleen/errors"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -32,6 +34,18 @@ type File struct {
 	writeBuffer bufio.Writer
 }
 
+func (f *File) setFinalizer() {
+	runtime.SetFinalizer(f, func(h *File) {
+		if f.file != nil {
+			log.Println("GC found unclosed File, closing...")
+			var err = f.Close()
+			if err != nil {
+				log.Println("Error closing File:", err)
+			}
+		}
+	})
+}
+
 func OpenFile(path string) (*File, error) {
 	var f File
 	var err error
@@ -44,6 +58,7 @@ func OpenFile(path string) (*File, error) {
 		return nil, err
 	}
 	f.initBuffers()
+	f.setFinalizer()
 	return &f, nil
 }
 
@@ -58,6 +73,7 @@ func CreateFile(path string) (*File, error) {
 		return nil, err
 	}
 	f.initBuffers()
+	f.setFinalizer()
 	return f, nil
 }
 
@@ -79,6 +95,7 @@ func CreateFileTmp(path string) (*File, error) {
 		return nil, err
 	}
 	f.initBuffers()
+	f.setFinalizer()
 	return &f, nil
 }
 
