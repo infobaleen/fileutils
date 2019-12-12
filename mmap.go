@@ -39,10 +39,12 @@ func (h *MmapHandle) Close() error {
 func (h *MmapHandle) setFinalizer() {
 	if h.bytes != nil {
 		runtime.SetFinalizer(h, func(h *MmapHandle) {
-			log.Println("GC found unclosed MmapHandle, closing...")
-			var err = h.Close()
-			if err != nil {
-				log.Println("Error closing MmapHandle:", err)
+			if h.bytes != nil {
+				log.Println("GC found unclosed MmapHandle, closing...")
+				var err = h.Close()
+				if err != nil {
+					log.Println("Error closing MmapHandle:", err)
+				}
 			}
 		})
 	}
