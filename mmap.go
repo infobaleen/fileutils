@@ -48,6 +48,27 @@ func (h *MmapHandle) setFinalizer() {
 	}
 }
 
+func MmapCreate(path string, size int64, slicePointers ...interface{}) (*MmapHandle, error) {
+	var f, err = CreateFileTmp(path)
+	if err != nil {
+		return nil, err
+	}
+	if err = f.SetSize(size); err != nil {
+		return nil, err
+	}
+	var h *MmapHandle
+	if h, err = MmapFd(f.file, slicePointers...); err != nil {
+		return nil, err
+	}
+	err = f.Close()
+	if err != nil {
+		_ = h.Close()
+		return nil, err
+	}
+	h.SetSlicePointer(slicePointers...)
+	return h, nil
+}
+
 func Mmap(path string, slicePointers ...interface{}) (*MmapHandle, error) {
 	var f, err = os.OpenFile(path, os.O_RDWR, 0666)
 	if err != nil {

@@ -157,6 +157,15 @@ func (f *File) Write(b []byte) (int, error) {
 	return f.writeBuffer.Write(b)
 }
 
+func (f *File) SetSize(size int64) error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+	if err := f.emptyBuffers(); err != nil {
+		return err
+	}
+	return f.file.Truncate(size)
+}
+
 func (f *File) Size() (int64, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
