@@ -72,8 +72,6 @@ func CreateFile(path string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.initBuffers()
-	f.setFinalizer()
 	return f, nil
 }
 
