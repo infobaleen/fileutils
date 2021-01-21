@@ -49,10 +49,10 @@ func ReadJsonFileAppend(filename string, p interface{}) error {
 
 func WriteJsonFile(filename string, v ...interface{}) error {
 	var file, err = CreateFileTmp(filename)
-	defer file.RemoveIfTmp()
 	if err != nil {
 		return err
 	}
+	defer file.RemoveIfTmp()
 	err = WriteJson(file, v...)
 	if err != nil {
 		return err
